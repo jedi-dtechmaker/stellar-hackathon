@@ -19,7 +19,7 @@ async function requireTestnet(publicKey?: string) {
   if (details.error || details.networkPassphrase !== TESTNET.passphrase) throw new Error("Switch Freighter to Stellar Testnet, then try again.");
   if (publicKey) {
     const address = await getAddress();
-    if (address.error || address.address !== publicKey) throw new Error("Your active wallet changed. Disconnect and connect again.");
+    if (address.error || address.address !== publicKey) throw new Error("Your active wallet changed. Log out and connect again.");
   }
 }
 export function WalletProvider({ children }: { children: ReactNode }) {
@@ -36,7 +36,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setSession(value);
   }, []);
   const disconnect = useCallback(() => {
-    activeToken.current = null; setSession(null); setError(null); setActivating(false); setActivationError(null);
+    activeToken.current = null; setSession(null); setError(null); setConnecting(false); setActivating(false); setActivationError(null);
     sessionStorage.removeItem(sessionKey);
   }, []);
   useEffect(() => {
@@ -71,7 +71,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setConnecting(true); setError(null);
     try {
       const available = await isConnected();
-      if (!available.isConnected) throw new Error("Freighter is needed for an external wallet. You can sign in with email instead.");
+      if (!available.isConnected) throw new Error("Install the Freighter extension, then refresh this page and connect your wallet.");
       const access = await requestAccess();
       if (access.error || !access.address) throw new Error(access.error?.message ?? "Wallet connection was declined.");
       await requireTestnet(access.address);

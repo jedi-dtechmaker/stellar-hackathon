@@ -16,6 +16,12 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe("verification email delivery", () => {
+  it("does not call an email provider when email sign-in is disabled", async () => {
+    env.EMAIL_PROVIDER = "disabled";
+    const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
+    await expect(sendVerificationEmail("person@example.com", "012345")).rejects.toMatchObject({ status: 503, code: "EMAIL_AUTH_DISABLED" });
+    expect(fetch).not.toHaveBeenCalled(); expect(smtp.sendMail).not.toHaveBeenCalled();
+  });
   it("sends the verification code through Resend with a bounded HTTPS request", async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ id: "email-id" })); vi.stubGlobal("fetch", fetch);
     await sendVerificationEmail("person@example.com", "012345");

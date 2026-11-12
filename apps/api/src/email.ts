@@ -28,6 +28,7 @@ export async function verifyEmailTransport() {
 }
 
 export async function sendVerificationEmail(email: string, code: string) {
+  if (env.EMAIL_PROVIDER === "disabled") throw new AppError(503, "Email sign-in is unavailable. Connect with Freighter on Stellar Testnet.", "EMAIL_AUTH_DISABLED");
   try {
     const message = {
       from: env.EMAIL_FROM,

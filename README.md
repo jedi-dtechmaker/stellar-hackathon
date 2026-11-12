@@ -1,10 +1,10 @@
 # StellarDrop
 
-A multi-page Next.js application, Express API, PostgreSQL database, and Telegram bot for sending **live Stellar Testnet USDC** with a claim code. Senders sign in with a verified email and receive an encrypted custodial Stellar wallet automatically; Freighter is optional for existing wallet owners. Recipients claim in Telegram and withdraw through the **real SDF Test Anchor’s SEP-10 and SEP-24 endpoints**. Fiat payouts are simulated by the anchor. There is no mainnet mode and no mocked ledger implementation.
+A multi-page Next.js application, Express API, PostgreSQL database, and Telegram bot for sending **live Stellar Testnet USDC** with a claim code. Senders connect the Freighter extension on **Stellar Testnet** and approve a signed wallet ownership challenge. Recipients claim in Telegram and withdraw through the **real SDF Test Anchor’s SEP-10 and SEP-24 endpoints**. Fiat payouts are simulated by the anchor. There is no mainnet mode and no mocked ledger implementation.
 
 ## Run locally
 
-Requires Node.js 22.12+ (Node 24 recommended), npm, PostgreSQL 18 or Docker, and a Resend account (or Mailpit for local development). Create a Telegram bot with [BotFather](https://t.me/BotFather) to use the recipient flow. The Freighter extension is optional.
+Requires Node.js 22.12+ (Node 24 recommended), npm, PostgreSQL 18 or Docker, and the [Freighter extension](https://www.freighter.app/). Select **Testnet** in Freighter before connecting. Create a Telegram bot with [BotFather](https://t.me/BotFather) to use the recipient flow. Email configuration is not required.
 
 ```sh
 npm install
@@ -17,9 +17,9 @@ npm run db:migrate
 npm run dev
 ```
 
-Set `ENCRYPTION_KEY`, `JWT_SECRET`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_BOT_USERNAME` in `.env`. For verification emails, set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` to a Resend sending API key, and `EMAIL_FROM` to an address on your verified sending domain, such as `StellarDrop <hello@your-domain.com>`. Add the DNS records shown in Resend and wait for the domain to show **Verified**. The app sends through Resend's HTTPS API; SMTP credentials and a Resend webhook are not required. See [the Resend setup instructions](docs/NETLIFY.md#connect-resend) for deployment and testing details.
+Set `ENCRYPTION_KEY`, `JWT_SECRET`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_BOT_USERNAME` in `.env`. Keep `EMAIL_PROVIDER=disabled` for the Freighter flow. No Resend or SMTP credentials are needed.
 
-For a local inbox, set `EMAIL_PROVIDER=smtp` and `EMAIL_FROM="StellarDrop <hello@stellardrop.test>"`, run `docker compose up -d mailpit`, and use the default `127.0.0.1:1025` SMTP settings without credentials. Verification emails then appear at **http://localhost:8025**. `npm run smtp:verify` checks SMTP connection/authentication without sending an email; it does not check Resend. Never point production login at an unprotected test inbox. Production SMTP connections require TLS.
+The optional email verification API remains available for future use but is disabled by default and is not part of the current sign-in screen. See [the email provider notes](docs/NETLIFY.md#optional-email-provider) if you enable it later.
 
 Leave both master escrow keys empty for automatic generation. The first startup persists the escrow key **encrypted in PostgreSQL before funding it with Friendbot**. Subsequent starts reuse it. Preserve the encryption key and back up PostgreSQL together; losing either can make existing custody wallets unrecoverable. An explicitly configured escrow must match the persisted one.
 
@@ -29,9 +29,9 @@ Web: **http://localhost:3000**. API: **http://localhost:4000**. `npm run dev` st
 
 ## Try the full flow
 
-1. Open `/login` or `/dashboard`, enter your email, and submit the six-digit code delivered by email. Only then is your Stellar keypair generated and encrypted. You enter the dashboard immediately while Friendbot funding and the USDC trustline are prepared. Signing in again with the same email restores the same wallet. No extension or password is required. Existing wallet owners can choose **Use Freighter**, set it to **Testnet**, and approve a sequence-zero ownership challenge instead.
-2. Your email wallet activates automatically; retry **wallet setup** if Testnet services are temporarily unavailable. External wallets can use **Get test XLM** and **Add USDC trustline**. Get the exact Testnet USDC asset from [Circle’s faucet](https://faucet.circle.com) or use a Testnet XLM → USDC path payment where liquidity exists. Friendbot supplies XLM, **not USDC**.
-3. Open `/dashboard/create`, choose an amount, and click **Create drop** to approve the transfer. For an email wallet, the server signs the prepared funding intent using that authenticated user's encrypted key; an external wallet signs it in Freighter. A single atomic transaction pays the escrow and creates the claimable balance. The claim code becomes available only after successful ledger inclusion.
+1. Open `/login` or `/dashboard`, select **Testnet** in Freighter, click **Connect Freighter**, and approve the sign-in challenge. Your live Testnet USDC balance appears at the top of the dashboard, with a **Refresh** button and automatic updates every 30 seconds. The labeled **Log out** button clears the saved browser session and returns you to sign-in.
+2. Use **Get test XLM** and **Add USDC trustline** to prepare your connected wallet. Get the exact Testnet USDC asset from [Circle’s faucet](https://faucet.circle.com) or use a Testnet XLM → USDC path payment where liquidity exists. Friendbot supplies XLM, **not USDC**.
+3. Open `/dashboard/create`, choose an amount, click **Create drop**, and approve the transaction in Freighter. A single atomic transaction pays the escrow and creates the claimable balance. The claim code becomes available only after successful ledger inclusion.
 4. Share `/drop/CODE` through WhatsApp or Telegram. The share message contains the configured bot’s actual deep link. Claim codes are bearer credentials: share them privately.
 5. The recipient opens the link in Telegram. The bot persists an encrypted keypair, funds XLM, establishes the USDC trustline, then atomically claims the escrow balance and pays the receiver. `/balance` reads live Horizon state. A second receiver cannot reserve the same code; repeat claims by the first receiver return the existing result.
 6. Type `/withdraw` or `/withdraw 2`. Complete the **SDF-hosted** interactive page with **test data only**. The worker waits for `pending_user_transfer_start`, submits the payment with the exact destination, amount, and memo, and polls until the anchor completes the simulated payout. `/status` shows progress and a Testnet explorer link.
@@ -55,7 +55,7 @@ flowchart LR
   J --> S
 ```
 
-- `apps/web`: App Router landing, email sign-in, protected sender dashboard, create, and dynamic share routes. Responsive Tailwind/CSS interface, real account/wallet state, empty/error/loading states, filterable drop table, live refresh, and safe pending-transaction retries.
+- `apps/web`: App Router landing, Freighter sign-in, protected sender dashboard, create, and dynamic share routes. Responsive Tailwind/CSS interface, real account/wallet state, empty/error/loading states, filterable drop table, live refresh, and safe pending-transaction retries.
 - `apps/api`: Express, Telegraf, Stellar services, SEP clients, and recovery worker. `src/index.ts` performs initialization and starts workers; `src/app.ts` exposes the API independently for testing.
 - `packages/shared`: immutable Testnet configuration, shared API types, and exact integer arithmetic for Stellar’s seven decimal places.
 - `prisma`: the requested three core models, plus durable email/wallet auth challenges, funding intents, ledger jobs, claim reservations, encrypted system keys, withdrawals, and a Telegram update queue. `User.emailVerifiedAt` records successful proof of inbox ownership. `withdrawnAmount` tracks partial settlements. The original `bankDetailsJson` field remains in the requested schema but is **never written**.
@@ -72,7 +72,7 @@ Claim reservations remain bound to the first receiver through temporary Friendbo
 
 - Testnet URLs, network passphrase, issuer, and anchor domain are exact constants validated at startup. Attempts to configure mainnet fail startup. Frontend connection/signing also verifies Freighter’s passphrase and active address.
 - AES-256-GCM uses a fresh 96-bit nonce, authenticated tags, a versioned ciphertext format, and per-user context binding. Escrow secrets and anchor session tokens also use authenticated encryption. Secret material is never returned by an API or logged.
-- Email login uses cryptographically random six-digit codes with a ten-minute expiry, a five-attempt limit, a one-minute resend cooldown, and a shared limit of five emails per address per hour. Codes are HMAC-hashed with a server secret and bound to their email/challenge; plaintext codes are sent only through the configured email provider and never returned by the API or logged. Resending invalidates the previous code. A database transaction consumes a valid code and creates or reuses the encrypted wallet together, so concurrent verification cannot create a second wallet.
+- The optional email API, disabled by default, uses cryptographically random six-digit codes with a ten-minute expiry, a five-attempt limit, a one-minute resend cooldown, and a shared limit of five emails per address per hour. Codes are HMAC-hashed with a server secret and bound to their email/challenge; plaintext codes are sent only through the configured email provider and never returned by the API or logged. Resending invalidates the previous code. A database transaction consumes a valid code and creates or reuses the encrypted wallet together, so concurrent verification cannot create a second wallet.
 - JWTs record the server-verified authentication method. Email sessions can authorize only their own prepared funding intents; there is no generic endpoint for signing arbitrary XDR. External wallet JWTs require a one-time signed sequence-zero challenge and the account’s medium signature threshold. Tokens expire after eight hours; the browser keeps them in session storage. Email is the sign-in/recovery method for custodial sender wallets; protecting the inbox protects access to that wallet. Read-only shared drop responses expose no sender, receiver, bank data, or private keys.
 - Rate limits cover API traffic, auth/writes, webhooks, and Telegram commands. Production proxy trust is an explicit hop count. Configure perimeter/shared rate limiting at your ingress when running multiple API replicas; process-local HTTP counters are per replica. Telegram limits are shared through PostgreSQL.
 - Webhook requests require Telegram’s `X-Telegram-Bot-Api-Secret-Token`, checked with constant-time comparison. Updates are queued before acknowledgment, deduplicated by `update_id`, and sanitized to private commands without Telegram names/contact data. Processed command payloads are cleared and deduplication rows expire after seven days.
@@ -88,7 +88,7 @@ All amounts are decimal **strings**, with at most seven decimal places. Authenti
 | --- | --- | --- |
 | `GET /health` | Public | PostgreSQL readiness and network |
 | `GET /api/config` | Public | Testnet configuration, public escrow address, bot username |
-| `POST /api/auth/email/request` | Public, rate limited | `{ email }` → challenge ID; sends a code through Resend (or SMTP for local development) |
+| `POST /api/auth/email/request` | Public, rate limited | `{ email }` → challenge ID; optional email API, disabled by default |
 | `POST /api/auth/email/verify` | Email code | `{ challengeId, code }` → JWT and public wallet identity; generates the wallet on first verification |
 | `POST /api/auth/challenge` | Public, rate limited | `{ publicKey }` → one-time challenge XDR |
 | `POST /api/auth/verify` | Signed wallet | `{ challengeId, signedTransaction }` → JWT |

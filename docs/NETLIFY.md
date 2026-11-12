@@ -1,12 +1,12 @@
 # Deploy StellarDrop to Netlify
 
-The existing Next.js website and Express API deploy together on one Netlify site. `/api/*` is rewritten to the API function; email registration, verification, wallet activation, and drop creation retain their existing endpoints. PostgreSQL holds users, encrypted wallets, pending transactions, and the Telegram update queue.
+The existing Next.js website and Express API deploy together on one Netlify site. `/api/*` is rewritten to the API function; Freighter wallet authentication, balance reads, and drop creation retain their existing endpoints. The current website uses Freighter on Stellar Testnet; email setup is not required. PostgreSQL holds users, encrypted wallets, pending transactions, and the Telegram update queue.
 
 The bot uses Telegram webhooks in production. Each authenticated webhook first persists the update, then invokes a protected background function. A scheduled function also invokes that worker every minute to recover interrupted jobs and poll withdrawals. A PostgreSQL advisory lock prevents overlapping worker batches. No persistent polling loop runs inside the API function.
 
 ## 1. Connect the repository
 
-Import `jedi-dtechmaker/stellarDrop` into Netlify. Select the Next.js app in `apps/web` as the **package directory** and leave the **base directory** at the repository root. The committed `netlify.toml` specifies:
+Import `jedi-dtechmaker/stellar-hackathon` into Netlify. Select the Next.js app in `apps/web` as the **package directory** and leave the **base directory** at the repository root. The committed `netlify.toml` specifies:
 
 | Setting | Value |
 | --- | --- |
@@ -30,9 +30,7 @@ Create a hosted PostgreSQL database and add these variables to the Netlify site'
 | `NODE_ENV` | `production` |
 | `TELEGRAM_MODE` | `webhook` for production; `disabled` for deploy previews and branch deploys |
 | `TRUST_PROXY_HOPS` | `1` |
-| `EMAIL_PROVIDER` | `resend` |
-| `RESEND_API_KEY` | A Resend sending API key, restricted to your verified sending domain |
-| `EMAIL_FROM` | An address on that exact verified domain, for example `StellarDrop <hello@your-domain.com>` |
+| `EMAIL_PROVIDER` | `disabled` (also the default); Freighter sign-in requires no email credentials |
 | `WORKER_SECRET` | A separate secret generated with `openssl rand -hex 32` |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | Your BotFather credentials and username |
 | `TELEGRAM_WEBHOOK_SECRET` | A separate URL-safe secret, 32–256 characters |
@@ -46,16 +44,11 @@ Leave both master escrow keys empty to create and persist an encrypted escrow au
 
 Set `TELEGRAM_MODE=disabled` for deploy previews and branch deployments. Worker functions also check Netlify's request context and reject calls outside production; the build-only `CONTEXT` environment variable is not used to authorize workers. Give previews a separate database and secrets if you enable email/wallet testing there.
 
-### Connect Resend
+### Optional email provider
 
-1. Create a Resend account and add a domain you own under **Domains**. Add the exact SPF, DKIM, and any supporting DNS records Resend provides to your DNS host, then wait for the domain's sending status to become **Verified**. You can use a sending subdomain such as `mail.your-domain.com`; the sender address must use that verified subdomain. A Netlify-provided `*.netlify.app` address is a website address, not a sending domain you own.
-2. Under **API Keys**, create a key with **Sending access**, restricted to that domain. Store it in `RESEND_API_KEY` in your local `.env` and Netlify's Functions environment. Do not put it in browser code or a `NEXT_PUBLIC_*` variable.
-3. Set `EMAIL_PROVIDER=resend` and `EMAIL_FROM="StellarDrop <hello@your-domain.com>"` in the same environments. Replace the example address with an address on your verified domain. The existing `SMTP_*` settings are unused when Resend is selected.
-4. Restart local development or redeploy Netlify, open `/login`, and request a verification code to your own inbox. Check the email in Resend's **Emails** dashboard, enter the six-digit code, and confirm sign-in. Resend accepting an API request does not prove inbox delivery; check its delivery status and your spam folder if needed.
+Keep `EMAIL_PROVIDER=disabled` for this deployment. Users connect the Freighter extension on Stellar Testnet; the sign-in page does not ask for an email address. Neither a Resend account nor SMTP credentials are required.
 
-For an initial test before verifying a domain, Resend's `StellarDrop <onboarding@resend.dev>` sender is limited to the email address associated with your Resend account. Verify your own domain before opening signup to other users.
-
-The app calls Resend's HTTPS email API directly. No SMTP username/password, hosted email template, receiving configuration, or Resend webhook is needed for verification codes. Existing one-use codes, expiry, attempt limits, and wallet creation remain handled by the app.
+The optional email API and Resend transport are retained for future use. To enable that API later, set `EMAIL_PROVIDER=resend`, a sending API key in `RESEND_API_KEY`, and `EMAIL_FROM` to an address on a domain verified in Resend. Add the DNS records Resend provides. Email sign-in would also need to be restored in the website interface before users could use that flow.
 
 ## 3. Apply migrations and publish
 
@@ -78,9 +71,9 @@ This command contacts Telegram to register the production webhook and bot comman
 
 ## 4. Verify the production flow
 
-Check `/health`, then register with your email on `/login`. Verify the delivered code and confirm that a wallet appears in the dashboard. Sign out and sign in with the same email to confirm wallet reuse.
+Check `/health`, open `/login`, select **Testnet** in Freighter, and click **Connect Freighter**. Approve the sign-in challenge and confirm that the dashboard shows your connected address and live Testnet USDC balance. Click **Refresh** to update it. Use **Log out** and confirm that the sign-in screen returns and protected dashboard content is hidden.
 
-For Resend, request a code on `/login` and check its delivery status in the Resend dashboard. `npm run smtp:verify` is only for the optional SMTP/Mailpit transport and cannot validate a Resend API key.
+Email provider checks are unnecessary for Freighter sign-in. `npm run smtp:verify` applies only if you explicitly select the optional SMTP/Mailpit transport.
 
 Verify that Netlify lists `api`, `worker`, and `schedule-worker` under Functions, that `worker` is marked as a background function, and that `schedule-worker` is scheduled every minute. Use a private test drop and your own Telegram chat to verify webhook processing and a simulated anchor withdrawal.
 

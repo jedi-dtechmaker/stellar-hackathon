@@ -4,6 +4,10 @@ beforeEach(() => { vi.resetModules(); });
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe("email configuration", () => {
+  it("supports wallet sign-in without email provider credentials", async () => {
+    vi.stubEnv("EMAIL_PROVIDER", "disabled"); vi.stubEnv("RESEND_API_KEY", ""); vi.stubEnv("SMTP_USER", "unused-smtp-user");
+    expect((await import("../src/config.js")).env.EMAIL_PROVIDER).toBe("disabled");
+  });
   it("requires a Resend API key when Resend is selected", async () => {
     vi.stubEnv("EMAIL_PROVIDER", "resend"); vi.stubEnv("RESEND_API_KEY", "");
     await expect(import("../src/config.js")).rejects.toThrow("Configure RESEND_API_KEY");

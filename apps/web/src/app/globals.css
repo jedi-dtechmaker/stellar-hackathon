@@ -29,5 +29,17 @@
 .auth-resend,.auth-change-email{background:transparent;font-size:11px;color:#718d4c;padding:9px 0;display:flex;align-items:center;justify-content:center;gap:6px}
 .auth-change-email{font-size:10px;color:#8c9b7b;padding:2px 0}
 .wallet-activation-notice{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.wallet-auth-card>.button{width:100%;margin:8px 0 16px}
+.wallet-auth-card>.auth-custody-note{text-align:left}
+.wallet-connect-steps{text-align:left;color:#6a7d57;font-size:12px;line-height:1.8;padding:18px 20px 18px 38px;background:#f0f4e7;border-radius:9px;margin:0 0 18px}
+.wallet-connect-steps li+li{margin-top:8px}
+.wallet-install-link{margin-top:16px;font-size:11px;color:#627446}
+.logout-button{gap:7px;min-height:40px}
+.wallet-summary{flex-wrap:wrap;background:#eef4e3;border-color:#d8e3c6}
+.wallet-summary .balance-amount strong{font-size:30px}
+.balance-refresh{display:inline-flex;align-items:center;gap:6px;background:transparent;color:#526b3e;padding:10px;font-size:11px;border:1px solid #d8e3c6;border-radius:7px}
+.balance-refresh:hover{background:#e2eccf}
+@media(max-width:640px){.logout-button{font-size:11px;padding:9px 10px}.wallet-summary .balance-amount strong{font-size:25px}.wallet-summary .wallet-address{order:3;flex-basis:calc(100% - 42px);margin-left:42px;text-align:left}.wallet-summary .wallet-address a{justify-content:flex-start}.balance-refresh{margin-left:auto;padding:9px 7px;font-size:10px}}
+@media(max-width:400px){.site-header .wallet-chip{display:none}}
 @media(max-width:640px){.login-main{padding:25px 20px 40px}.email-auth-card{padding:20px 3px;margin:10px auto 25px}.email-auth-card h1{font-size:34px;letter-spacing:-1.5px}.email-auth-card>p{font-size:11px}.email-auth-card>.eyebrow{font-size:7px}.email-auth-card .connect-icon{width:68px;height:68px;border-radius:19px}.email-auth-form>input{font-size:16px}.email-auth-form>.verification-code-input{font-size:26px;letter-spacing:11px}.auth-custody-note{font-size:9px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

@@ -20,7 +20,12 @@ function codeHash(id: string, email: string, code: string) {
 }
 const invalidCode = () => new AppError(401, "That code is invalid or expired. Try again or request a new code.", "EMAIL_CODE_INVALID");
 
+function requireEmailAuth() {
+  if (env.EMAIL_PROVIDER === "disabled") throw new AppError(503, "Email sign-in is unavailable. Connect with Freighter on Stellar Testnet.", "EMAIL_AUTH_DISABLED");
+}
+
 export async function requestEmailCode(rawEmail: string) {
+  requireEmailAuth();
   const email = normalizeEmail(rawEmail);
   return withLock(emailLock(email), async () => {
     const latest = await db.emailChallenge.findFirst({ where: { email }, orderBy: { createdAt: "desc" } });
@@ -48,6 +53,7 @@ export async function requestEmailCode(rawEmail: string) {
 }
 
 export async function verifyEmailCode(challengeId: string, code: string) {
+  requireEmailAuth();
   if (!/^\d{6}$/.test(code)) throw invalidCode();
   const lookup = await db.emailChallenge.findUnique({ where: { id: challengeId }, select: { email: true } });
   if (!lookup) throw invalidCode();

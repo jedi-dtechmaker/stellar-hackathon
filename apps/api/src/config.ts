@@ -12,7 +12,7 @@ const schema = z.object({
   ANCHOR_HOME_DOMAIN: z.literal(TESTNET.anchor).default(TESTNET.anchor),
   ENCRYPTION_KEY: z.string().regex(/^[a-fA-F0-9]{64}$/, "ENCRYPTION_KEY must be 32 random bytes encoded as 64 hex characters"),
   JWT_SECRET: z.string().min(32),
-  EMAIL_PROVIDER: z.enum(["resend", "smtp"]).default("smtp"),
+  EMAIL_PROVIDER: z.enum(["disabled", "resend", "smtp"]).default("disabled"),
   RESEND_API_KEY: z.string().default(""),
   SMTP_HOST: z.string().default("127.0.0.1"),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),

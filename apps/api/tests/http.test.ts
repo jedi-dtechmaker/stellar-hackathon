@@ -2,9 +2,20 @@ import { afterAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp } from "../src/app.js";
 import { db, lockPool } from "../src/db.js";
+import { env } from "../src/config.js";
 const app = createApp();
 afterAll(async () => { await db.$disconnect(); await lockPool.end(); });
 describe("API security boundaries", () => {
+  it("disables email sign-in without accessing the database when Freighter is selected", async () => {
+    const provider = env.EMAIL_PROVIDER;
+    env.EMAIL_PROVIDER = "disabled";
+    try {
+      const requested = await request(app).post("/api/auth/email/request").send({ email: "person@example.com" });
+      expect(requested.status).toBe(503); expect(requested.body.code).toBe("EMAIL_AUTH_DISABLED");
+      const verified = await request(app).post("/api/auth/email/verify").send({ challengeId: "61a8e198-6223-43ac-9cc4-11e4519a5710", code: "123456" });
+      expect(verified.status).toBe(503); expect(verified.body.token).toBeUndefined();
+    } finally { env.EMAIL_PROVIDER = provider; }
+  });
   it("requires a signed wallet session for the dashboard", async () => { const response = await request(app).get("/api/dashboard"); expect(response.status).toBe(401); });
   it("does not mint a funded drop from just an amount and public key", async () => { const response = await request(app).post("/api/drops").send({ amount: "10", senderPublicKey: "G".repeat(56) }); expect(response.status).toBe(401); });
   it("rejects forged and malformed JWTs", async () => { const response = await request(app).get("/api/me").set("Authorization", "Bearer forged"); expect(response.status).toBe(401); });
