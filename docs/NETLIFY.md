@@ -17,6 +17,8 @@ Import `jedi-dtechmaker/stellar-hackathon` into Netlify. Select the Next.js app 
 
 Netlify's current Next.js adapter supplies routing, rendering, and image support automatically. Keep automatic adapter updates enabled. Do not deploy this app as a static export. The configuration sets `NODE_ENV=production` for builds and explicitly installs development dependencies because TypeScript and Prisma are needed to build the app. Building with the local `NODE_ENV=development` value can fail while prerendering `/` with `Cannot read properties of null (reading 'useState')`.
 
+The `netlify/package.json` file marks the functions as ES modules, matching the ESM-only shared workspace. Keep this file in the deployment: otherwise Netlify bundles the API as CommonJS and it fails to start with `ERR_REQUIRE_ESM` when importing `@stellardrop/shared`.
+
 ## 2. Configure the production environment
 
 Create a hosted PostgreSQL database and add these variables to the Netlify site's **production** environment through the Netlify UI, CLI, or API. Server variables must be available to **Functions**, and the build needs `DATABASE_URL` for Prisma generation. Variables declared in `netlify.toml` are build settings and are not available to function runtime code. Local `.env` files are ignored by Git and are not uploaded as deployment configuration.
@@ -82,7 +84,7 @@ This command contacts Telegram to register the production webhook and bot comman
 
 ## 4. Verify the production flow
 
-Check `/health`, open `/login`, select **Testnet** in Freighter, and click **Connect Freighter**. Approve the sign-in challenge and confirm that the dashboard shows your connected address and live Testnet USDC balance. Click **Refresh** to update it. Use **Log out** and confirm that the sign-in screen returns and protected dashboard content is hidden.
+Check that `/health` returns HTTP 200 and `/api/me` returns HTTP 401 with a JSON sign-in message when logged out. An HTTP 502 response indicates a function startup failure; inspect the API function logs before retrying wallet sign-in. Then open `/login`, select **Testnet** in Freighter, and click **Connect Freighter**. Approve the sign-in challenge and confirm that the dashboard shows your connected address and live Testnet USDC balance. Click **Refresh** to update it. Use **Log out** and confirm that the sign-in screen returns and protected dashboard content is hidden.
 
 Email provider checks are unnecessary for Freighter sign-in. `npm run smtp:verify` applies only if you explicitly select the optional SMTP/Mailpit transport.
 
