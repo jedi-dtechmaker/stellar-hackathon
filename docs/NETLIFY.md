@@ -32,7 +32,8 @@ Create a hosted PostgreSQL database and add these variables to the Netlify site'
 | `TRUST_PROXY_HOPS` | `1` |
 | `EMAIL_PROVIDER` | `disabled` (also the default); Freighter sign-in requires no email credentials |
 | `WORKER_SECRET` | A separate secret generated with `openssl rand -hex 32` |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` | Your BotFather credentials and username |
+| `TELEGRAM_BOT_TOKEN` | Your private BotFather token; mark as containing secret values |
+| `TELEGRAM_BOT_USERNAME` | Your public bot username |
 | `TELEGRAM_WEBHOOK_SECRET` | A separate URL-safe secret, 32–256 characters |
 | `TELEGRAM_WEBHOOK_URL` | `https://your-site.netlify.app/api/webhooks/telegram` |
 
@@ -45,6 +46,14 @@ Use a PostgreSQL connection that preserves sessions for advisory locks. A transa
 Leave both master escrow keys empty to create and persist an encrypted escrow automatically. If you reuse an existing database, keep its encryption key and configured escrow consistent with the existing records.
 
 Set `TELEGRAM_MODE=disabled` for deploy previews and branch deployments. Worker functions also check Netlify's request context and reject calls outside production; the build-only `CONTEXT` environment variable is not used to authorize workers. Give previews a separate database and secrets if you enable email/wallet testing there.
+
+### Secret scanning
+
+When adding public configuration variables in Netlify, leave **Contains secret values** unchecked. Marking values such as `production`, `webhook`, or the Stellar Testnet network passphrase as secrets causes false positives because those values legitimately appear in source code, examples, and browser bundles.
+
+The committed `SECRETS_SCAN_OMIT_KEYS` setting excludes only these ten public variables from value matching: `ANCHOR_HOME_DOMAIN`, `ANCHOR_POLL_INTERVAL_MS`, `NETWORK_PASSPHRASE`, `NODE_ENV`, `PORT`, `STELLAR_HORIZON_URL`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_MODE`, `USDC_ISSUER`, and `WEB_ORIGIN`. This also handles these variables if they were already imported as secrets. Secret scanning remains enabled, and no file paths are excluded.
+
+Keep credentials marked as secrets, including `DATABASE_URL`, `ENCRYPTION_KEY`, `JWT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WORKER_SECRET`, and any configured escrow private key or email provider credentials. Never add those keys to `SECRETS_SCAN_OMIT_KEYS`. Redeploy after applying the configuration. See [Netlify's secret scanning configuration](https://docs.netlify.com/build/environment-variables/secrets-controller/#configure-secret-scanning).
 
 ### Optional email provider
 
