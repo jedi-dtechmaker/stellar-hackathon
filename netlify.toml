@@ -1,0 +1,27 @@
+[build]
+  command = "npm run db:generate && npm run build"
+  publish = "apps/web/.next"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "24"
+  NPM_FLAGS = "--include=dev"
+  # Browser requests use this site's /api routes.
+  NEXT_PUBLIC_API_URL = ""
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@prisma/client", "@stellar/stellar-sdk", "express", "nodemailer", "pg", "pino", "telegraf"]
+  included_files = ["node_modules/.prisma/client/**"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/api/health"
+  status = 200
+  force = true

@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  telegramId         String?  @unique
+  email              String?  @unique
+  emailVerifiedAt    DateTime?
+  walletPublicKey    String?  @unique
+  custodialPubKey    String?  @unique
+  custodialEncSecKey String?
+  bankDetailsJson    Json?
+  createdAt          DateTime @default(now())
+  dropsCreated       Drop[]   @relation("Sender")
+  dropsClaimed       Drop[]   @relation("Receiver")
+  withdrawals        Withdrawal[]
+}
+
+model Drop {
+  id               String   @id @default(uuid())
+  claimCode        String   @unique
+  amount           String
+  assetCode        String   @default("USDC")
+  assetIssuer      String
+  status           String   @default("CREATED")
+  withdrawnAmount  String   @default("0")
+  stellarBalanceId String?  @unique
+  senderId         String?
+  sender           User?    @relation("Sender", fields: [senderId], references: [id])
+  receiverId       String?
+  receiver         User?    @relation("Receiver", fields: [receiverId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([senderId, createdAt])
+  @@index([receiverId, status])
+}
+
+model TransactionLog {
+  id        String   @id @default(uuid())
+  dropId    String
+  txHash    String
+  type      String
+  status    String
+  createdAt DateTime @default(now())
+
+  @@unique([dropId, type, txHash])
+  @@index([dropId])
+}
+
+// Server-generated escrow keys survive restarts; encrypted with the same AEAD scheme.
+model SystemKey {
+  name      String @id
+  publicKey String
+  encrypted String
+}
+
+model AuthChallenge {
+  id        String   @id @default(uuid())
+  publicKey String
+  message   String
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+model EmailChallenge {
+  id        String   @id @default(uuid())
+  email     String
+  codeHash  String
+  attempts  Int      @default(0)
+  status    String   @default("PENDING")
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([expiresAt])
+}
+
+model FundingIntent {
+  id          String   @id @default(uuid())
+  senderId    String
+  publicKey   String
+  claimCode   String   @unique
+  amount      String
+  unsignedXdr String
+  txHash      String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+}
+
+// Signed envelopes are persisted BEFORE submission. The exact envelope is retried,
+// never a replacement payment on an ambiguous network response.
+model LedgerJob {
+  id              String   @id @default(uuid())
+  kind            String
+  reference       String
+  sourcePublicKey String
+  signedXdr       String
+  txHash          String   @unique
+  state           String   @default("PREPARED")
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([kind, reference])
+  @@index([state, updatedAt])
+}
+
+// Reserves a claim for exactly one receiver while Horizon/Friendbot are in flight.
+model ClaimRequest {
+  dropId    String   @id
+  userId    String
+  createdAt DateTime @default(now())
+}
+
+model Withdrawal {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  activeUserId     String?  @unique
+  anchorId         String?  @unique
+  amount           String
+  status           String   @default("INITIATING")
+  interactiveUrl   String?
+  encryptedToken  String?
+  dropIds          String[]
+  allocations      Json
+  paymentHash      String?
+  lastError        String?
+  nextPollAt       DateTime @default(now())
+  notifiedAt       DateTime?
+  notificationAt  DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([activeUserId, nextPollAt])
+}
+
+model TelegramUpdate {
+  updateId    BigInt   @id
+  telegramId  String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([telegramId, createdAt])
+}

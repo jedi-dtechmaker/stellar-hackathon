@@ -1,0 +1,35 @@
+{
+  "name": "stellardrop",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @stellardrop/shared && concurrently -k -n api,web \"npm run dev -w @stellardrop/api\" \"npm run dev -w @stellardrop/web\"",
+    "build": "npm run build -w @stellardrop/shared && npm run build -w @stellardrop/api && npm run build -w @stellardrop/web",
+    "typecheck": "npm run build -w @stellardrop/shared && npm run typecheck --workspaces --if-present && tsc -p netlify/tsconfig.json",
+    "test": "npm run build -w @stellardrop/shared && npm run test -w @stellardrop/api",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:dev": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "test:integration": "npm run build -w @stellardrop/shared && npm run test:integration -w @stellardrop/api",
+    "test:live": "npm run build -w @stellardrop/shared && npm run test:live -w @stellardrop/api",
+    "smtp:verify": "npm run smtp:verify -w @stellardrop/api",
+    "telegram:webhook": "npm run telegram:webhook -w @stellardrop/api"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^6.1.1",
+    "concurrently": "^9.2.1",
+    "playwright": "^1.58.2",
+    "prisma": "^6.19.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "serverless-http": "^4.0.0"
+  }
+}

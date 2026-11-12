@@ -1,0 +1,44 @@
+{
+  "name": "@stellardrop/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/unit.test.ts tests/http.test.ts tests/netlify.test.ts tests/email.test.ts tests/config.test.ts",
+    "test:integration": "vitest run tests/database.test.ts tests/email-auth.test.ts",
+    "test:live": "tsx scripts/live-testnet.ts",
+    "smtp:verify": "tsx scripts/verify-smtp.ts",
+    "telegram:webhook": "tsx scripts/configure-webhook.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "@stellar/stellar-sdk": "^17.4.0",
+    "@stellardrop/shared": "1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^10.5.0",
+    "pg": "^8.16.3",
+    "pino": "^10.1.0",
+    "telegraf": "^4.16.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.15.6",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,20 @@
+import { afterAll, describe, expect, it } from "vitest";
+import request from "supertest";
+import { createApp } from "../src/app.js";
+import { db, lockPool } from "../src/db.js";
+const app = createApp();
+afterAll(async () => { await db.$disconnect(); await lockPool.end(); });
+describe("API security boundaries", () => {
+  it("requires a signed wallet session for the dashboard", async () => { const response = await request(app).get("/api/dashboard"); expect(response.status).toBe(401); });
+  it("does not mint a funded drop from just an amount and public key", async () => { const response = await request(app).post("/api/drops").send({ amount: "10", senderPublicKey: "G".repeat(56) }); expect(response.status).toBe(401); });
+  it("rejects forged and malformed JWTs", async () => { const response = await request(app).get("/api/me").set("Authorization", "Bearer forged"); expect(response.status).toBe(401); });
+  it("refuses Telegram updates without the configured webhook secret", async () => { const response = await request(app).post("/api/webhooks/telegram").send({ update_id: 1 }); expect(response.status).toBe(403); });
+  it("does not expose custodial balances from Telegram ID alone", async () => { const response = await request(app).get("/api/users/123/balance"); expect(response.status).toBe(401); });
+  it("validates public claim codes before querying the database", async () => { const response = await request(app).get("/api/drops/00000000"); expect(response.status).toBe(400); });
+  it("rejects invalid JSON and provides security headers", async () => { const response = await request(app).post("/api/auth/challenge").set("Content-Type", "application/json").send("{"); expect(response.status).toBe(400); expect(response.headers["x-content-type-options"]).toBe("nosniff"); expect(response.headers["x-powered-by"]).toBeUndefined(); });
+  it("validates wallet addresses", async () => { const response = await request(app).post("/api/auth/challenge").send({ publicKey: "not-an-address" }); expect(response.status).toBe(400); });
+  it("does not authorize another web origin", async () => { const response = await request(app).get("/does-not-exist").set("Origin", "https://evil.example"); expect(response.headers["access-control-allow-origin"]).not.toBe("https://evil.example"); });
+  it("validates email input before sending or recording a code", async () => { const response = await request(app).post("/api/auth/email/request").send({ email: "invalid-email" }); expect(response.status).toBe(400); });
+  it("does not accept an email code without its challenge identifier", async () => { const response = await request(app).post("/api/auth/email/verify").send({ code: "123456" }); expect(response.status).toBe(400); expect(response.body.token).toBeUndefined(); });
+  it("requires authentication to activate a generated wallet", async () => { const response = await request(app).post("/api/wallet/activate").send({}); expect(response.status).toBe(401); });
+});

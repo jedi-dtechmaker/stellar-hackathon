@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.next/
+dist/
+coverage/
+*.log
+.data/
+*.tsbuildinfo
+playwright-report/
+test-results/
+.netlify/
