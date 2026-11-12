@@ -19,6 +19,8 @@ Netlify's current Next.js adapter supplies routing, rendering, and image support
 
 The `netlify/package.json` file marks the functions as ES modules, matching the ESM-only shared workspace. Keep this file in the deployment: otherwise Netlify bundles the API as CommonJS and it fails to start with `ERR_REQUIRE_ESM` when importing `@stellardrop/shared`.
 
+The Prisma generator includes the `rhel-openssl-3.0.x` query engine required by Netlify's Node.js 24 runtime, alongside the native engine for local development. The existing function inclusion rule packages these generated engine files.
+
 ## 2. Configure the production environment
 
 Create a hosted PostgreSQL database and add these variables to the Netlify site's **production** environment through the Netlify UI, CLI, or API. Server variables must be available to **Functions**, and the build needs `DATABASE_URL` for Prisma generation. Variables declared in `netlify.toml` are build settings and are not available to function runtime code. Local `.env` files are ignored by Git and are not uploaded as deployment configuration.
@@ -35,7 +37,7 @@ Create a hosted PostgreSQL database and add these variables to the Netlify site'
 | `EMAIL_PROVIDER` | `disabled` (also the default); Freighter sign-in requires no email credentials |
 | `WORKER_SECRET` | A separate secret generated with `openssl rand -hex 32` |
 | `TELEGRAM_BOT_TOKEN` | Your private BotFather token; mark as containing secret values |
-| `TELEGRAM_BOT_USERNAME` | Your public bot username |
+| `TELEGRAM_BOT_USERNAME` | Your public bot username; available to Builds for the landing-page bot button and Functions for claim links |
 | `TELEGRAM_WEBHOOK_SECRET` | A separate URL-safe secret, 32–256 characters |
 | `TELEGRAM_WEBHOOK_URL` | `https://your-site.netlify.app/api/webhooks/telegram` |
 
@@ -43,7 +45,7 @@ Set `NODE_ENV`, `TELEGRAM_MODE`, and `TRUST_PROXY_HOPS` in the Netlify environme
 
 Do not import local runtime values unchanged: use `NODE_ENV=production`, an HTTPS `WEB_ORIGIN`, a hosted PostgreSQL `DATABASE_URL`, and `TELEGRAM_MODE=webhook` in production. `localhost` addresses point at the Netlify function itself, not your development machine. The build settings in `netlify.toml` override conflicting UI values during the build, but the Functions environment still needs the production values above.
 
-Use a PostgreSQL connection that preserves sessions for advisory locks. A transaction-pooling endpoint is unsuitable for the lock pool. Use the provider's direct connection endpoint with this version of the app.
+Use a PostgreSQL connection that preserves sessions for advisory locks: either a direct connection or a session pooler. A transaction-pooling endpoint is unsuitable for the lock pool.
 
 Leave both master escrow keys empty to create and persist an encrypted escrow automatically. If you reuse an existing database, keep its encryption key and configured escrow consistent with the existing records.
 
@@ -56,6 +58,20 @@ When adding public configuration variables in Netlify, leave **Contains secret v
 The committed `SECRETS_SCAN_OMIT_KEYS` setting excludes only these ten public variables from value matching: `ANCHOR_HOME_DOMAIN`, `ANCHOR_POLL_INTERVAL_MS`, `NETWORK_PASSPHRASE`, `NODE_ENV`, `PORT`, `STELLAR_HORIZON_URL`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_MODE`, `USDC_ISSUER`, and `WEB_ORIGIN`. This also handles these variables if they were already imported as secrets. Secret scanning remains enabled, and no file paths are excluded.
 
 Keep credentials marked as secrets, including `DATABASE_URL`, `ENCRYPTION_KEY`, `JWT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WORKER_SECRET`, and any configured escrow private key or email provider credentials. Never add those keys to `SECRETS_SCAN_OMIT_KEYS`. Redeploy after applying the configuration. See [Netlify's secret scanning configuration](https://docs.netlify.com/build/environment-variables/secrets-controller/#configure-secret-scanning).
+
+### Supabase PostgreSQL
+
+Create a Supabase project, open **Connect**, and select **Session pooler** on port **5432**. This provides an IPv4-compatible connection while preserving the session-level advisory locks used by StellarDrop. Use this connection for both Prisma migrations and the deployed app; the transaction pooler on port 6543 is unsuitable for this version's lock pool.
+
+StellarDrop uses server-side PostgreSQL connections. Turn **Enable Data API** off under **Integrations → Data API** for this database-only setup; Supabase's browser SDK and generated REST endpoints are unnecessary.
+
+Copy the URI from the dashboard, insert the database password, and configure `DATABASE_URL` in Netlify for Builds and Functions. The value should follow this format:
+
+```dotenv
+DATABASE_URL="postgresql://postgres.PROJECT_REF:URL_ENCODED_PASSWORD@POOLER_HOST:5432/postgres?schema=public&sslmode=require&connection_limit=1"
+```
+
+Copy the actual pooler hostname and username from Supabase rather than constructing them. Percent-encode reserved characters in the password. Keep this connection string private. The Supabase project URL and publishable/anon key are not database connection strings and are not used by this app. Apply the committed Prisma migrations against the hosted database as described below, then redeploy and check `/health` before wallet sign-in.
 
 ### Optional email provider
 
@@ -100,6 +116,8 @@ Netlify's synchronous functions have a 60-second limit; background functions hav
 - [Background Functions](https://docs.netlify.com/build/functions/background-functions/)
 - [Scheduled Functions](https://docs.netlify.com/build/functions/scheduled-functions/)
 - [Function environment variables](https://docs.netlify.com/build/functions/environment-variables/)
+- [Prisma on Netlify](https://www.prisma.io/docs/orm/v6/prisma-client/deployment/serverless/deploy-to-netlify)
+- [Supabase PostgreSQL connections](https://supabase.com/docs/guides/database/connecting-to-postgres)
 - [Resend verified domains](https://resend.com/docs/dashboard/domains/introduction)
 - [Resend sending API keys](https://resend.com/docs/api-reference/api-keys/create-api-key)
 - [Resend email API](https://resend.com/docs/api-reference/emails/send-email)
