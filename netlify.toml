@@ -5,6 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "24"
+  NODE_ENV = "production"
   NPM_FLAGS = "--include=dev"
   # Browser requests use this site's /api routes.
   NEXT_PUBLIC_API_URL = ""

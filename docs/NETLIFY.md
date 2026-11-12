@@ -15,7 +15,7 @@ Import `jedi-dtechmaker/stellar-hackathon` into Netlify. Select the Next.js app 
 | Functions directory | `netlify/functions` |
 | Node.js | 24 |
 
-Netlify's current Next.js adapter supplies routing, rendering, and image support automatically. Keep automatic adapter updates enabled. Do not deploy this app as a static export. The build explicitly installs development dependencies because TypeScript and Prisma are needed to build the app.
+Netlify's current Next.js adapter supplies routing, rendering, and image support automatically. Keep automatic adapter updates enabled. Do not deploy this app as a static export. The configuration sets `NODE_ENV=production` for builds and explicitly installs development dependencies because TypeScript and Prisma are needed to build the app. Building with the local `NODE_ENV=development` value can fail while prerendering `/` with `Cannot read properties of null (reading 'useState')`.
 
 ## 2. Configure the production environment
 
@@ -37,6 +37,8 @@ Create a hosted PostgreSQL database and add these variables to the Netlify site'
 | `TELEGRAM_WEBHOOK_URL` | `https://your-site.netlify.app/api/webhooks/telegram` |
 
 Set `NODE_ENV`, `TELEGRAM_MODE`, and `TRUST_PROXY_HOPS` in the Netlify environment alongside the secrets so the functions receive them at runtime. The committed configuration sets `NEXT_PUBLIC_API_URL` to an empty string at build time, so browsers call `/api` on the current site. Keep mail credentials and wallet secrets out of `NEXT_PUBLIC_*` variables. Redeploy after changing environment variables.
+
+Do not import local runtime values unchanged: use `NODE_ENV=production`, an HTTPS `WEB_ORIGIN`, a hosted PostgreSQL `DATABASE_URL`, and `TELEGRAM_MODE=webhook` in production. `localhost` addresses point at the Netlify function itself, not your development machine. The build settings in `netlify.toml` override conflicting UI values during the build, but the Functions environment still needs the production values above.
 
 Use a PostgreSQL connection that preserves sessions for advisory locks. A transaction-pooling endpoint is unsuitable for the lock pool. Use the provider's direct connection endpoint with this version of the app.
 
