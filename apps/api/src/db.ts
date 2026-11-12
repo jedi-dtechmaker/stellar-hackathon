@@ -5,7 +5,14 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { env } from "./config.js";
 
 export const db = new PrismaClient();
-export const lockPool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 12 });
+const lockConnectionUrl = new URL(env.DATABASE_URL);
+const serverCertificatePath = lockConnectionUrl.searchParams.get("sslcert");
+if (serverCertificatePath) {
+  lockConnectionUrl.searchParams.delete("sslcert");
+  lockConnectionUrl.searchParams.set("sslrootcert", serverCertificatePath);
+  lockConnectionUrl.searchParams.set("sslmode", "verify-full");
+}
+export const lockPool = new pg.Pool({ connectionString: lockConnectionUrl.toString(), max: 12 });
 const lockSession = new AsyncLocalStorage<pg.PoolClient>();
 
 // A scheduled invocation should skip a batch already running in another function.

@@ -14,7 +14,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@prisma/client", "@stellar/stellar-sdk", "express", "nodemailer", "pg", "pino", "telegraf"]
-  included_files = ["node_modules/.prisma/client/**"]
+  included_files = ["node_modules/.prisma/client/**", "prisma/supabase-ca.crt"]
 
 [[redirects]]
   from = "/api/*"

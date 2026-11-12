@@ -68,10 +68,12 @@ StellarDrop uses server-side PostgreSQL connections. Turn **Enable Data API** of
 Copy the URI from the dashboard, insert the database password, and configure `DATABASE_URL` in Netlify for Builds and Functions. The value should follow this format:
 
 ```dotenv
-DATABASE_URL="postgresql://postgres.PROJECT_REF:URL_ENCODED_PASSWORD@POOLER_HOST:5432/postgres?schema=public&sslmode=require&connection_limit=1"
+DATABASE_URL="postgresql://postgres.PROJECT_REF:URL_ENCODED_PASSWORD@POOLER_HOST:5432/postgres?schema=public&sslmode=require&sslcert=/var/task/prisma/supabase-ca.crt&sslaccept=strict&connection_limit=1"
 ```
 
 Copy the actual pooler hostname and username from Supabase rather than constructing them. Percent-encode reserved characters in the password. Keep this connection string private. The Supabase project URL and publishable/anon key are not database connection strings and are not used by this app. Apply the committed Prisma migrations against the hosted database as described below, then redeploy and check `/health` before wallet sign-in.
+
+The public Supabase CA certificate is bundled at `prisma/supabase-ca.crt`, downloaded from [Supabase's certificate endpoint](https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt). Prisma uses `sslcert` for this server CA; the advisory-lock pool translates it to node-postgres's `sslrootcert` and verifies the hostname. For local migration commands, replace `/var/task/prisma/supabase-ca.crt` with the absolute path to this repository's certificate. Keep `sslaccept=strict` to verify the server certificate.
 
 ### Optional email provider
 
